@@ -2,8 +2,10 @@ import Phaser from 'phaser';
 import EasyStar from 'easystarjs';
 import Player from '../entities/Player';
 import Npc, { type NpcData } from '../entities/Npc';
+import Enemy from '../entities/Enemy';
 import npcData from '../data/npcs.json';
 import questData from '../data/quests.json';
+import enemyData from '../data/enemies.json';
 
 interface GridPoint {
   x: number;
@@ -26,6 +28,7 @@ export default class PlazaScene extends Phaser.Scene {
   private easystar: any;
   private player!: Player;
   private npcs: Npc[] = [];
+  private enemies: Enemy[] = [];
   private dialogueText!: Phaser.GameObjects.Text;
   private hudText!: Phaser.GameObjects.Text;
   private hpFill!: Phaser.GameObjects.Rectangle;
@@ -68,13 +71,33 @@ export default class PlazaScene extends Phaser.Scene {
       return new Npc(this, details, (selectedNpc) => this.handleNpcInteraction(selectedNpc));
     });
 
+    this.enemies = (enemyData as Array<Record<string, unknown>>).map((enemy) => new Enemy(this, {
+      id: String(enemy.id),
+      name: String(enemy.name),
+      x: Number(enemy.x),
+      y: Number(enemy.y),
+      hp: Number(enemy.hp),
+      maxHp: Number(enemy.maxHp),
+      color: Number(enemy.color ?? 0xf87171),
+    }));
+
     this.createHud();
     this.updateHud();
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
+    this.events.on('enemy-target', (enemy: Enemy) => {
+      this.castBasicSpell(enemy);
+    });
+
+    this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => {
+      const target = this.getNearestEnemy();
+      if (target) {
+        this.castBasicSpell(target);
+      }
+    });
+
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      // NPC clicks are handled by the NPC itself; don't also turn them into movement clicks.
-      if (this.npcs.some((npc) => Phaser.Math.Distance.Between(pointer.worldX, pointer.worldY, npc.x, npc.y) < 28)) {
+      if (this.enemies.some((enemy) => Phaser.Math.Distance.Between(pointer.worldX, pointer.worldY, enemy.x, enemy.y) < 28)) {
         return;
       }
 
@@ -98,11 +121,62 @@ export default class PlazaScene extends Phaser.Scene {
     this.player?.update(time, delta);
   }
 
+  private castBasicSpell(enemy: Enemy): void {
+    if (!enemy.alive) {
+      this.dialogueText.setText('The target has already fallen.');
+      return;
+    }
+
+    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
+    if (distance > this.player.attackRange) {
+      this.dialogueText.setText('You are out of range. Get closer to the target.');
+      return;
+    }
+
+    if (this.player.mana < this.player.spellCost) {
+      this.dialogueText.setText('Not enough mana for Magic Blast.');
+      return;
+    }
+
+    this.player.mana = Math.max(0, this.player.mana - this.player.spellCost);
+    const damage = 18 + Math.floor(Math.random() * 10);
+    enemy.damage(damage);
+    this.dialogueText.setText(`Magic Blast hits ${enemy.name} for ${damage} damage.`);
+
+    if (!enemy.alive) {
+      this.dialogueText.setText(`${enemy.name} is defeated!`);
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + 6);
+      this.player.mana = Math.min(this.player.maxMana, this.player.mana + 12);
+    }
+
+    this.updateHud();
+  }
+
+  private getNearestEnemy(): Enemy | null {
+    const aliveEnemies = this.enemies.filter((enemy) => enemy.alive);
+    if (aliveEnemies.length === 0) {
+      return null;
+    }
+
+    let nearest = aliveEnemies[0];
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    for (const enemy of aliveEnemies) {
+      const currentDistance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
+      if (currentDistance < bestDistance) {
+        bestDistance = currentDistance;
+        nearest = enemy;
+      }
+    }
+
+    return nearest;
+  }
+
   private createHud(): void {
     const panel = this.add.rectangle(190, 112, 350, 184, 0x101827, 0.88);
     panel.setStrokeStyle(2, 0xcaa65a, 0.9).setScrollFactor(0).setDepth(90);
 
-    const title = this.add.text(28, 32, 'WINGED MAGE  •  LV 1', {
+    this.add.text(28, 32, 'WINGED MAGE  •  LV 1', {
       fontFamily: 'system-ui, sans-serif', fontSize: '16px', color: '#f7e7b0', fontStyle: 'bold',
     }).setScrollFactor(0).setDepth(100);
 
@@ -121,7 +195,7 @@ export default class PlazaScene extends Phaser.Scene {
       lineSpacing: 4, wordWrap: { width: 320 },
     }).setScrollFactor(0).setDepth(100);
 
-    this.dialogueText = this.add.text(24, 0, 'Click the plaza to move. Click an NPC to interact.', {
+    this.dialogueText = this.add.text(24, 0, 'Click the plaza to move. Click an enemy or press Space to cast Magic Blast.', {
       fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#fff8e6',
       backgroundColor: 'rgba(16, 24, 39, 0.9)', padding: { x: 12, y: 8 },
       wordWrap: { width: 560 },

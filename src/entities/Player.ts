@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 
 export default class Player extends Phaser.GameObjects.Container {
   public readonly speed = 180;
+  public readonly attackRange = 260;
+  public readonly spellCost = 12;
   public hp = 100;
   public maxHp = 100;
   public mana = 80;

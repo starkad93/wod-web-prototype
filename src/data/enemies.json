@@ -1,0 +1,20 @@
+[
+  {
+    "id": "slime_1",
+    "name": "Void Slime",
+    "x": 980,
+    "y": 620,
+    "hp": 40,
+    "maxHp": 40,
+    "color": 16711680
+  },
+  {
+    "id": "slime_2",
+    "name": "Wild Wisp",
+    "x": 1120,
+    "y": 760,
+    "hp": 55,
+    "maxHp": 55,
+    "color": 16759625
+  }
+]
