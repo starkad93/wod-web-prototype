@@ -29,6 +29,7 @@ export default class PlazaScene extends Phaser.Scene {
   private selectedEnemy: Enemy | null = null;
   private dialogueText!: Phaser.GameObjects.Text;
   private hudText!: Phaser.GameObjects.Text;
+  private levelText!: Phaser.GameObjects.Text;
   private hpFill!: Phaser.GameObjects.Rectangle;
   private manaFill!: Phaser.GameObjects.Rectangle;
   private spellButton!: Phaser.GameObjects.Container;
@@ -82,6 +83,7 @@ export default class PlazaScene extends Phaser.Scene {
       maxHp: Number(enemy.maxHp),
       color: Number(enemy.color ?? 0xf87171),
       attackDamage: Number(enemy.attackDamage ?? 8),
+      xpReward: Number(enemy.xpReward ?? 25),
     }));
 
     this.createHud();
@@ -212,12 +214,13 @@ export default class PlazaScene extends Phaser.Scene {
 
     this.player.mana = Math.max(0, this.player.mana - this.player.spellCost);
     this.player.startSpellCooldown();
-    const damage = 18 + Math.floor(Math.random() * 10);
+    const damage = this.player.getSpellDamage();
     enemy.damage(damage);
     this.dialogueText.setText(`Magic Blast hits ${enemy.name} for ${damage} damage.`);
 
     if (!enemy.alive) {
       this.currentQuestDefeated += 1;
+      this.player.gainXp(enemy.xpReward);
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + 6);
       this.player.mana = Math.min(this.player.maxMana, this.player.mana + 12);
       this.handleCombatQuestProgress();
@@ -260,7 +263,7 @@ export default class PlazaScene extends Phaser.Scene {
     const panel = this.add.rectangle(190, 112, 350, 184, 0x101827, 0.88);
     panel.setStrokeStyle(2, 0xcaa65a, 0.9).setScrollFactor(0).setDepth(90);
 
-    this.add.text(28, 32, 'WINGED MAGE  •  LV 1', {
+    this.levelText = this.add.text(28, 32, 'WINGED MAGE  •  LV 1', {
       fontFamily: 'system-ui, sans-serif', fontSize: '16px', color: '#f7e7b0', fontStyle: 'bold',
     }).setScrollFactor(0).setDepth(100);
 
@@ -293,13 +296,14 @@ export default class PlazaScene extends Phaser.Scene {
     const ratioMana = Phaser.Math.Clamp(this.player.mana / this.player.maxMana, 0, 1);
     this.hpFill.width = 220 * ratioHp;
     this.manaFill.width = 220 * ratioMana;
+    this.levelText.setText(`WINGED MAGE  •  LV ${this.player.level}`);
 
     const quest = this.quests[this.currentQuestIndex];
     if (quest) {
       const extra = quest.id === 'slime-clearing' ? ` (${this.currentQuestDefeated}/2 defeated)` : '';
-      this.hudText.setText(`HP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\n${quest.title}\n${quest.description}${extra}`);
+      this.hudText.setText(`LV ${this.player.level} | XP ${this.player.xp}/${this.player.xpToNextLevel}\nHP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\n${quest.title}\n${quest.description}${extra}`);
     } else {
-      this.hudText.setText(`HP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\nAll plaza quests complete!`);
+      this.hudText.setText(`LV ${this.player.level} | XP ${this.player.xp}/${this.player.xpToNextLevel}\nHP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\nAll plaza quests complete!`);
     }
   }
 

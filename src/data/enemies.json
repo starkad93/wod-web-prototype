@@ -7,7 +7,8 @@
     "hp": 40,
     "maxHp": 40,
     "color": 16711680,
-    "attackDamage": 9
+    "attackDamage": 9,
+    "xpReward": 35
   },
   {
     "id": "slime_2",
@@ -17,6 +18,18 @@
     "hp": 55,
     "maxHp": 55,
     "color": 16759625,
-    "attackDamage": 11
+    "attackDamage": 11,
+    "xpReward": 50
+  },
+  {
+    "id": "warden_1",
+    "name": "Shadow Warden",
+    "x": 1280,
+    "y": 660,
+    "hp": 80,
+    "maxHp": 80,
+    "color": 11184810,
+    "attackDamage": 15,
+    "xpReward": 70
   }
 ]

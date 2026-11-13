@@ -9,6 +9,7 @@ export interface EnemyData {
   maxHp: number;
   color?: number;
   attackDamage?: number;
+  xpReward?: number;
 }
 
 export default class Enemy extends Phaser.GameObjects.Container {
@@ -17,6 +18,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
   public readonly name: string;
   public alive = true;
   public readonly attackDamage: number;
+  public readonly xpReward: number;
 
   private readonly body: Phaser.GameObjects.Circle;
   private readonly label: Phaser.GameObjects.Text;
@@ -30,6 +32,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.maxHp = data.maxHp;
     this.hp = data.hp;
     this.attackDamage = data.attackDamage ?? 8;
+    this.xpReward = data.xpReward ?? 25;
 
     this.body = scene.add.circle(0, 0, 18, data.color ?? 0xf87171, 1);
     this.label = scene.add.text(0, -28, data.name, {
@@ -58,8 +61,26 @@ export default class Enemy extends Phaser.GameObjects.Container {
 
   public damage(amount: number): number {
     if (!this.alive) return 0;
+
     this.hp = Math.max(0, this.hp - amount);
     this.healthBar.width = 34 * (this.hp / this.maxHp);
+
+    const damageText = this.scene.add.text(this.x, this.y - 24, `-${amount}`, {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '14px',
+      color: '#fca5a5',
+      fontStyle: 'bold',
+      backgroundColor: 'rgba(15, 23, 42, 0.5)',
+      padding: { x: 4, y: 2 },
+    });
+    damageText.setDepth(150);
+    this.scene.tweens.add({
+      targets: damageText,
+      y: this.y - 54,
+      alpha: 0,
+      duration: 500,
+      onComplete: () => damageText.destroy(),
+    });
 
     if (this.hp <= 0) {
       this.alive = false;

@@ -11,6 +11,8 @@ export default class Player extends Phaser.GameObjects.Container {
   public mana = 80;
   public maxMana = 80;
   public level = 1;
+  public xp = 0;
+  public xpToNextLevel = 100;
   public cooldownRemaining = 0;
 
   private path: Array<{ x: number; y: number }> = [];
@@ -95,5 +97,24 @@ export default class Player extends Phaser.GameObjects.Container {
 
   public canCastSpell(): boolean {
     return this.cooldownRemaining <= 0 && this.mana >= this.spellCost;
+  }
+
+  public getSpellDamage(): number {
+    const levelBonus = (this.level - 1) * 6;
+    return 18 + levelBonus + Math.floor(Math.random() * 10);
+  }
+
+  public gainXp(amount: number): void {
+    this.xp += amount;
+
+    while (this.xp >= this.xpToNextLevel) {
+      this.xp -= this.xpToNextLevel;
+      this.level += 1;
+      this.xpToNextLevel = Math.round(this.xpToNextLevel * 1.4);
+      this.maxHp += 18;
+      this.maxMana += 12;
+      this.hp = this.maxHp;
+      this.mana = this.maxMana;
+    }
   }
 }
