@@ -7,10 +7,7 @@ import npcData from '../data/npcs.json';
 import questData from '../data/quests.json';
 import enemyData from '../data/enemies.json';
 
-interface GridPoint {
-  x: number;
-  y: number;
-}
+interface GridPoint { x: number; y: number; }
 
 interface Quest {
   id: string;
@@ -35,6 +32,7 @@ export default class PlazaScene extends Phaser.Scene {
   private manaFill!: Phaser.GameObjects.Rectangle;
   private quests: Quest[] = [];
   private currentQuestIndex = 0;
+  private currentQuestDefeated = 0;
 
   constructor() {
     super('PlazaScene');
@@ -54,7 +52,7 @@ export default class PlazaScene extends Phaser.Scene {
       id: String(quest.id),
       title: String(quest.title),
       description: String(quest.description),
-      targetNpcId: String(quest.targetNpcId),
+      targetNpcId: String(quest.targetNpcId ?? ''),
       completed: false,
     }));
 
@@ -85,26 +83,21 @@ export default class PlazaScene extends Phaser.Scene {
     this.updateHud();
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
-    this.events.on('enemy-target', (enemy: Enemy) => {
-      this.castBasicSpell(enemy);
-    });
-
+    this.events.on('enemy-target', (enemy: Enemy) => this.castBasicSpell(enemy));
     this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => {
       const target = this.getNearestEnemy();
-      if (target) {
-        this.castBasicSpell(target);
-      }
+      if (target) this.castBasicSpell(target);
     });
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (this.enemies.some((enemy) => Phaser.Math.Distance.Between(pointer.worldX, pointer.worldY, enemy.x, enemy.y) < 28)) {
+      const clickedEnemy = this.enemies.find((enemy) => enemy.alive && Phaser.Math.Distance.Between(pointer.worldX, pointer.worldY, enemy.x, enemy.y) < 28);
+      if (clickedEnemy) {
+        this.castBasicSpell(clickedEnemy);
         return;
       }
 
       const targetGrid = this.worldToGrid(pointer.worldX, pointer.worldY);
-      if (!this.isWalkable(targetGrid.x, targetGrid.y)) {
-        return;
-      }
+      if (!this.isWalkable(targetGrid.x, targetGrid.y)) return;
 
       const startGrid = this.worldToGrid(this.player.x, this.player.y);
       const path = this.findPath(startGrid, targetGrid);
@@ -144,23 +137,35 @@ export default class PlazaScene extends Phaser.Scene {
     this.dialogueText.setText(`Magic Blast hits ${enemy.name} for ${damage} damage.`);
 
     if (!enemy.alive) {
-      this.dialogueText.setText(`${enemy.name} is defeated!`);
+      this.currentQuestDefeated += 1;
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + 6);
       this.player.mana = Math.min(this.player.maxMana, this.player.mana + 12);
+      this.handleCombatQuestProgress();
     }
 
     this.updateHud();
   }
 
+  private handleCombatQuestProgress(): void {
+    const quest = this.quests[this.currentQuestIndex];
+    if (!quest || quest.id !== 'slime-clearing') return;
+
+    if (this.currentQuestDefeated >= 2) {
+      quest.completed = true;
+      this.dialogueText.setText('Quest complete: the first battle is won.');
+      this.currentQuestIndex += 1;
+      this.currentQuestDefeated = 0;
+    } else {
+      this.dialogueText.setText(`Defeated ${this.currentQuestDefeated}/2 enemies.`);
+    }
+  }
+
   private getNearestEnemy(): Enemy | null {
     const aliveEnemies = this.enemies.filter((enemy) => enemy.alive);
-    if (aliveEnemies.length === 0) {
-      return null;
-    }
+    if (aliveEnemies.length === 0) return null;
 
     let nearest = aliveEnemies[0];
     let bestDistance = Number.POSITIVE_INFINITY;
-
     for (const enemy of aliveEnemies) {
       const currentDistance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
       if (currentDistance < bestDistance) {
@@ -168,7 +173,6 @@ export default class PlazaScene extends Phaser.Scene {
         nearest = enemy;
       }
     }
-
     return nearest;
   }
 
@@ -180,13 +184,11 @@ export default class PlazaScene extends Phaser.Scene {
       fontFamily: 'system-ui, sans-serif', fontSize: '16px', color: '#f7e7b0', fontStyle: 'bold',
     }).setScrollFactor(0).setDepth(100);
 
-    this.add.text(28, 60, 'HP', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#f8fafc' })
-      .setScrollFactor(0).setDepth(100);
+    this.add.text(28, 60, 'HP', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#f8fafc' }).setScrollFactor(0).setDepth(100);
     this.add.rectangle(86, 69, 220, 12, 0x3f1721).setScrollFactor(0).setDepth(95);
     this.hpFill = this.add.rectangle(86, 69, 220, 10, 0xe94b5a).setOrigin(0, 0.5).setScrollFactor(0).setDepth(96);
 
-    this.add.text(28, 84, 'MP', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#f8fafc' })
-      .setScrollFactor(0).setDepth(100);
+    this.add.text(28, 84, 'MP', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#f8fafc' }).setScrollFactor(0).setDepth(100);
     this.add.rectangle(86, 93, 220, 12, 0x142747).setScrollFactor(0).setDepth(95);
     this.manaFill = this.add.rectangle(86, 93, 220, 10, 0x4389ee).setOrigin(0, 0.5).setScrollFactor(0).setDepth(96);
 
@@ -214,7 +216,8 @@ export default class PlazaScene extends Phaser.Scene {
 
     const quest = this.quests[this.currentQuestIndex];
     if (quest) {
-      this.hudText.setText(`HP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\n${quest.title}\n${quest.description}`);
+      const extra = quest.id === 'slime-clearing' ? ` (${this.currentQuestDefeated}/2 defeated)` : '';
+      this.hudText.setText(`HP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\n${quest.title}\n${quest.description}${extra}`);
     } else {
       this.hudText.setText(`HP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\nAll plaza quests complete!`);
     }
@@ -227,6 +230,7 @@ export default class PlazaScene extends Phaser.Scene {
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + 8);
       this.player.mana = Math.min(this.player.maxMana, this.player.mana + 10);
       this.currentQuestIndex += 1;
+      this.currentQuestDefeated = 0;
 
       const nextQuest = this.quests[this.currentQuestIndex];
       if (nextQuest) {
@@ -238,9 +242,7 @@ export default class PlazaScene extends Phaser.Scene {
       return;
     }
 
-    if (quest && data.id === quest.targetNpcId && quest.completed) {
-      this.dialogueText.setText(`${data.name}: You've already completed this task.`);
-    } else if (data.quest) {
+    if (data.quest) {
       this.dialogueText.setText(`${data.name}: ${data.quest}`);
     } else if (data.event) {
       this.dialogueText.setText(`${data.name}: ${data.event}`);

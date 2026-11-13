@@ -10,5 +10,11 @@
     "title": "Guild Report",
     "description": "Report to the Guild Admin beside the fountain.",
     "targetNpcId": "guild_admin"
+  },
+  {
+    "id": "slime-clearing",
+    "title": "The First Test",
+    "description": "Defeat 2 enemies in the plaza.",
+    "targetNpcId": ""
   }
 ]
