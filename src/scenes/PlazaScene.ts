@@ -23,14 +23,15 @@ export default class PlazaScene extends Phaser.Scene {
   private readonly worldHeight = 1200;
   private readonly tileSize = 32;
   private grid: number[][] = [];
-  private easystar!: EasyStar.js;
+  private easystar: any;
   private player!: Player;
   private npcs: Npc[] = [];
   private dialogueText!: Phaser.GameObjects.Text;
   private hudText!: Phaser.GameObjects.Text;
+  private hpFill!: Phaser.GameObjects.Rectangle;
+  private manaFill!: Phaser.GameObjects.Rectangle;
   private quests: Quest[] = [];
   private currentQuestIndex = 0;
-  private currentQuest!: Quest;
 
   constructor() {
     super('PlazaScene');
@@ -54,11 +55,8 @@ export default class PlazaScene extends Phaser.Scene {
       completed: false,
     }));
 
-    this.currentQuestIndex = 0;
-    this.currentQuest = this.quests[this.currentQuestIndex];
-
     this.npcs = (npcData as Array<Record<string, unknown>>).map((npc) => {
-      return new Npc(this, {
+      const details: NpcData = {
         id: String(npc.id),
         name: String(npc.name),
         x: Number(npc.x),
@@ -66,132 +64,131 @@ export default class PlazaScene extends Phaser.Scene {
         role: npc.role ? String(npc.role) : undefined,
         quest: npc.quest ? String(npc.quest) : undefined,
         event: npc.event ? String(npc.event) : undefined,
-      }, (npcDetails) => this.handleNpcInteraction(npcDetails));
+      };
+      return new Npc(this, details, (selectedNpc) => this.handleNpcInteraction(selectedNpc));
     });
 
-    this.dialogueText = this.add.text(24, 20, 'Click on the plaza to walk.', {
-      fontFamily: 'monospace',
-      fontSize: '18px',
-      color: '#f8fafc',
-      backgroundColor: 'rgba(15, 23, 42, 0.8)',
-      padding: { x: 10, y: 6 },
-    });
-    this.dialogueText.setScrollFactor(0);
-    this.dialogueText.setDepth(100);
-
-    this.hudText = this.add.text(24, 72, '', {
-      fontFamily: 'monospace',
-      fontSize: '15px',
-      color: '#f8fafc',
-      backgroundColor: 'rgba(15, 23, 42, 0.8)',
-      padding: { x: 10, y: 8 },
-      lineSpacing: 6,
-    });
-    this.hudText.setScrollFactor(0);
-    this.hudText.setDepth(100);
-
+    this.createHud();
     this.updateHud();
-
-    this.events.on('dialogue', (message: string) => {
-      this.dialogueText.setText(message);
-    });
-
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      const worldX = pointer.worldX;
-      const worldY = pointer.worldY;
-      const targetGrid = this.worldToGrid(worldX, worldY);
+      // NPC clicks are handled by the NPC itself; don't also turn them into movement clicks.
+      if (this.npcs.some((npc) => Phaser.Math.Distance.Between(pointer.worldX, pointer.worldY, npc.x, npc.y) < 28)) {
+        return;
+      }
 
+      const targetGrid = this.worldToGrid(pointer.worldX, pointer.worldY);
       if (!this.isWalkable(targetGrid.x, targetGrid.y)) {
         return;
       }
 
       const startGrid = this.worldToGrid(this.player.x, this.player.y);
       const path = this.findPath(startGrid, targetGrid);
-
       if (path.length > 0) {
-        const worldPath = path.slice(1).map((point) => ({
+        this.player.setPath(path.slice(1).map((point) => ({
           x: (point.x + 0.5) * this.tileSize,
           y: (point.y + 0.5) * this.tileSize,
-        }));
-
-        this.player.setPath(worldPath);
+        })));
       }
     });
   }
 
-  private updateHud(): void {
-    const hp = Math.max(0, Math.round(this.player.hp));
-    const mana = Math.max(0, Math.round(this.player.mana));
+  update(time: number, delta: number): void {
+    this.player?.update(time, delta);
+  }
 
-    this.hudText.setText(
-      `Level ${this.player.level} | HP ${hp}/${this.player.maxHp} | MP ${mana}/${this.player.maxMana}\n` +
-      `Quest: ${this.currentQuest.title}\n` +
-      `Objective: ${this.currentQuest.description}`
-    );
+  private createHud(): void {
+    const panel = this.add.rectangle(190, 112, 350, 184, 0x101827, 0.88);
+    panel.setStrokeStyle(2, 0xcaa65a, 0.9).setScrollFactor(0).setDepth(90);
+
+    const title = this.add.text(28, 32, 'WINGED MAGE  •  LV 1', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '16px', color: '#f7e7b0', fontStyle: 'bold',
+    }).setScrollFactor(0).setDepth(100);
+
+    this.add.text(28, 60, 'HP', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#f8fafc' })
+      .setScrollFactor(0).setDepth(100);
+    this.add.rectangle(86, 69, 220, 12, 0x3f1721).setScrollFactor(0).setDepth(95);
+    this.hpFill = this.add.rectangle(86, 69, 220, 10, 0xe94b5a).setOrigin(0, 0.5).setScrollFactor(0).setDepth(96);
+
+    this.add.text(28, 84, 'MP', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#f8fafc' })
+      .setScrollFactor(0).setDepth(100);
+    this.add.rectangle(86, 93, 220, 12, 0x142747).setScrollFactor(0).setDepth(95);
+    this.manaFill = this.add.rectangle(86, 93, 220, 10, 0x4389ee).setOrigin(0, 0.5).setScrollFactor(0).setDepth(96);
+
+    this.hudText = this.add.text(28, 116, '', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '13px', color: '#e8edf5',
+      lineSpacing: 4, wordWrap: { width: 320 },
+    }).setScrollFactor(0).setDepth(100);
+
+    this.dialogueText = this.add.text(24, 0, 'Click the plaza to move. Click an NPC to interact.', {
+      fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: '#fff8e6',
+      backgroundColor: 'rgba(16, 24, 39, 0.9)', padding: { x: 12, y: 8 },
+      wordWrap: { width: 560 },
+    }).setScrollFactor(0).setDepth(100);
+    this.dialogueText.setY(this.scale.height - 54);
+    this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
+      this.dialogueText.setY(gameSize.height - 54);
+    });
+  }
+
+  private updateHud(): void {
+    const ratioHp = Phaser.Math.Clamp(this.player.hp / this.player.maxHp, 0, 1);
+    const ratioMana = Phaser.Math.Clamp(this.player.mana / this.player.maxMana, 0, 1);
+    this.hpFill.width = 220 * ratioHp;
+    this.manaFill.width = 220 * ratioMana;
+
+    const quest = this.quests[this.currentQuestIndex];
+    if (quest) {
+      this.hudText.setText(`HP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\n${quest.title}\n${quest.description}`);
+    } else {
+      this.hudText.setText(`HP ${this.player.hp}/${this.player.maxHp}   MP ${this.player.mana}/${this.player.maxMana}\nAll plaza quests complete!`);
+    }
   }
 
   private handleNpcInteraction(data: NpcData): void {
-    if (data.id === this.currentQuest.targetNpcId && !this.currentQuest.completed) {
-      this.currentQuest.completed = true;
-      this.player.mana = Math.min(this.player.maxMana, this.player.mana + 10);
+    const quest = this.quests[this.currentQuestIndex];
+    if (quest && data.id === quest.targetNpcId) {
+      quest.completed = true;
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + 8);
+      this.player.mana = Math.min(this.player.maxMana, this.player.mana + 10);
+      this.currentQuestIndex += 1;
 
-      const nextQuestIndex = this.currentQuestIndex + 1;
-      if (nextQuestIndex < this.quests.length) {
-        this.currentQuestIndex = nextQuestIndex;
-        this.currentQuest = this.quests[this.currentQuestIndex];
-        this.dialogueText.setText(`${data.name}: Good work. Your next objective is now available.`);
+      const nextQuest = this.quests[this.currentQuestIndex];
+      if (nextQuest) {
+        this.dialogueText.setText(`${data.name}: Thanks for your help. New objective: ${nextQuest.description}`);
       } else {
-        this.dialogueText.setText(`${data.name}: The plaza is secure. All current objectives are complete.`);
+        this.dialogueText.setText(`${data.name}: The plaza is secure. All available quests are complete!`);
       }
-
       this.updateHud();
       return;
     }
 
-    if (data.quest) {
+    if (quest && data.id === quest.targetNpcId && quest.completed) {
+      this.dialogueText.setText(`${data.name}: You've already completed this task.`);
+    } else if (data.quest) {
       this.dialogueText.setText(`${data.name}: ${data.quest}`);
-      return;
-    }
-
-    if (data.event) {
+    } else if (data.event) {
       this.dialogueText.setText(`${data.name}: ${data.event}`);
-      return;
+    } else {
+      this.dialogueText.setText(`${data.name}: Welcome to the plaza.`);
     }
-
-    this.dialogueText.setText(`${data.name}: Welcome to the plaza.`);
   }
 
   private createGround(): void {
-    const ground = this.add.rectangle(this.worldWidth / 2, this.worldHeight / 2, this.worldWidth, this.worldHeight, 0x2d6a4f);
-    ground.setDepth(0);
+    this.add.rectangle(this.worldWidth / 2, this.worldHeight / 2, this.worldWidth, this.worldHeight, 0x2d6a4f).setDepth(0);
+    this.add.rectangle(this.worldWidth / 2, 600, 900, 140, 0x5a6c47).setDepth(1);
+    this.add.rectangle(780, 600, 420, 260, 0x48694d).setDepth(2);
+    this.add.circle(780, 600, 55, 0x7dd3fc, 0.6).setDepth(3);
+    this.add.circle(780, 600, 18, 0xfdf2a3, 1).setDepth(4);
 
-    const stoneRoad = this.add.rectangle(this.worldWidth / 2, 600, 900, 140, 0x5a6c47);
-    stoneRoad.setDepth(1);
-
-    const plazaSquare = this.add.rectangle(780, 600, 420, 260, 0x48694d);
-    plazaSquare.setDepth(2);
-
-    const fountain = this.add.circle(780, 600, 55, 0x7dd3fc, 0.6);
-    fountain.setDepth(3);
-
-    const fountainCore = this.add.circle(780, 600, 18, 0xfdf2a3, 1);
-    fountainCore.setDepth(4);
-
-    const flowerA = this.add.circle(260, 260, 18, 0xf7c948, 0.8);
-    const flowerB = this.add.circle(1340, 360, 18, 0xf7c948, 0.8);
-    const flowerC = this.add.circle(1180, 820, 18, 0xf7c948, 0.8);
-    const flowerD = this.add.circle(420, 980, 18, 0xf7c948, 0.8);
-
-    [flowerA, flowerB, flowerC, flowerD].forEach((flower) => flower.setDepth(4));
+    const flowers = [[260, 260], [1340, 360], [1180, 820], [420, 980]];
+    flowers.forEach(([x, y]) => this.add.circle(x, y, 18, 0xf7c948, 0.8).setDepth(4));
   }
 
   private setupNavigationGrid(): void {
     const cols = Math.ceil(this.worldWidth / this.tileSize);
     const rows = Math.ceil(this.worldHeight / this.tileSize);
-
     this.grid = Array.from({ length: rows }, () => Array(cols).fill(1));
 
     this.blockRect(14, 12, 8, 7);
@@ -200,7 +197,7 @@ export default class PlazaScene extends Phaser.Scene {
     this.blockRect(9, 28, 8, 5);
     this.blockRect(20, 17, 3, 3);
 
-    this.easystar = new EasyStar.js();
+    this.easystar = new (EasyStar as any).js();
     this.easystar.setGrid(this.grid);
     this.easystar.setAcceptableTiles([1]);
     this.easystar.enableSync();
@@ -217,33 +214,18 @@ export default class PlazaScene extends Phaser.Scene {
   }
 
   private isWalkable(tileX: number, tileY: number): boolean {
-    if (tileY < 0 || tileX < 0) {
-      return false;
-    }
-    if (!this.grid[tileY] || !this.grid[tileY][tileX]) {
-      return false;
-    }
-    return this.grid[tileY][tileX] === 1;
+    return tileY >= 0 && tileX >= 0 && Boolean(this.grid[tileY]?.[tileX]) && this.grid[tileY][tileX] === 1;
   }
 
   private worldToGrid(worldX: number, worldY: number): GridPoint {
-    return {
-      x: Math.floor(worldX / this.tileSize),
-      y: Math.floor(worldY / this.tileSize),
-    };
+    return { x: Math.floor(worldX / this.tileSize), y: Math.floor(worldY / this.tileSize) };
   }
 
-  private findPath(start: GridPoint, end: GridPoint): Array<GridPoint> {
-    const result: Array<GridPoint> = [];
-
-    this.easystar.findPath(start.x, start.y, end.x, end.y, (path: Array<{ x: number; y: number }> | null) => {
-      if (path && path.length > 0) {
-        path.forEach((node) => {
-          result.push({ x: node.x, y: node.y });
-        });
-      }
+  private findPath(start: GridPoint, end: GridPoint): GridPoint[] {
+    const result: GridPoint[] = [];
+    this.easystar.findPath(start.x, start.y, end.x, end.y, (path: GridPoint[] | null) => {
+      if (path) result.push(...path.map(({ x, y }) => ({ x, y })));
     });
-
     this.easystar.calculate();
     return result;
   }
