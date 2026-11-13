@@ -4,11 +4,14 @@ export default class Player extends Phaser.GameObjects.Container {
   public readonly speed = 180;
   public readonly attackRange = 260;
   public readonly spellCost = 12;
+  public readonly manaRegenPerSecond = 7;
+  public readonly spellCooldownMs = 900;
   public hp = 100;
   public maxHp = 100;
   public mana = 80;
   public maxMana = 80;
   public level = 1;
+  public cooldownRemaining = 0;
 
   private path: Array<{ x: number; y: number }> = [];
   private readonly targetMarker: Phaser.GameObjects.Arc;
@@ -51,6 +54,9 @@ export default class Player extends Phaser.GameObjects.Container {
   }
 
   public update(time: number, delta: number): void {
+    this.cooldownRemaining = Math.max(0, this.cooldownRemaining - delta);
+    this.mana = Math.min(this.maxMana, this.mana + (this.manaRegenPerSecond * delta) / 1000);
+
     if (this.path.length === 0) {
       return;
     }
@@ -81,5 +87,13 @@ export default class Player extends Phaser.GameObjects.Container {
     this.setFlipX(dx < 0);
     this.wings[0].setRotation(-0.5 + Math.sin(time * 0.01) * 0.4);
     this.wings[1].setRotation(0.5 - Math.sin(time * 0.01) * 0.4);
+  }
+
+  public startSpellCooldown(): void {
+    this.cooldownRemaining = this.spellCooldownMs;
+  }
+
+  public canCastSpell(): boolean {
+    return this.cooldownRemaining <= 0 && this.mana >= this.spellCost;
   }
 }

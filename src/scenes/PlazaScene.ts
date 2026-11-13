@@ -26,10 +26,13 @@ export default class PlazaScene extends Phaser.Scene {
   private player!: Player;
   private npcs: Npc[] = [];
   private enemies: Enemy[] = [];
+  private selectedEnemy: Enemy | null = null;
   private dialogueText!: Phaser.GameObjects.Text;
   private hudText!: Phaser.GameObjects.Text;
   private hpFill!: Phaser.GameObjects.Rectangle;
   private manaFill!: Phaser.GameObjects.Rectangle;
+  private spellButton!: Phaser.GameObjects.Container;
+  private spellButtonText!: Phaser.GameObjects.Text;
   private quests: Quest[] = [];
   private currentQuestIndex = 0;
   private currentQuestDefeated = 0;
@@ -82,18 +85,24 @@ export default class PlazaScene extends Phaser.Scene {
     }));
 
     this.createHud();
+    this.createSpellButton();
     this.updateHud();
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
-    this.events.on('enemy-target', (enemy: Enemy) => this.castBasicSpell(enemy));
+    this.events.on('enemy-target', (enemy: Enemy) => {
+      this.selectedEnemy = enemy;
+      this.castBasicSpell(enemy);
+    });
+
     this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => {
-      const target = this.getNearestEnemy();
+      const target = this.selectedEnemy ?? this.getNearestEnemy();
       if (target) this.castBasicSpell(target);
     });
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       const clickedEnemy = this.enemies.find((enemy) => enemy.alive && Phaser.Math.Distance.Between(pointer.worldX, pointer.worldY, enemy.x, enemy.y) < 28);
       if (clickedEnemy) {
+        this.selectedEnemy = clickedEnemy;
         this.castBasicSpell(clickedEnemy);
         return;
       }
@@ -113,13 +122,56 @@ export default class PlazaScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
-    this.player?.update(time, delta);
+    this.player.update(time, delta);
     this.enemyAttackTimer += delta;
 
     if (this.enemyAttackTimer > 1200) {
       this.enemyAttackTimer = 0;
       this.performEnemyAttacks();
     }
+
+    this.updateSpellButton();
+  }
+
+  private createSpellButton(): void {
+    const bg = this.add.rectangle(this.scale.width - 150, this.scale.height - 80, 220, 56, 0x1f2937, 0.9);
+    bg.setStrokeStyle(2, 0x60a5fa, 1);
+    bg.setScrollFactor(0);
+    bg.setDepth(100);
+    bg.setInteractive();
+    bg.on('pointerdown', () => {
+      const target = this.selectedEnemy ?? this.getNearestEnemy();
+      if (target) {
+        this.castBasicSpell(target);
+      }
+    });
+
+    this.spellButtonText = this.add.text(this.scale.width - 215, this.scale.height - 96, 'Magic Blast', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '16px',
+      color: '#f8fafc',
+      fontStyle: 'bold',
+    });
+    this.spellButtonText.setScrollFactor(0);
+    this.spellButtonText.setDepth(101);
+
+    this.spellButton = this.add.container(this.scale.width - 150, this.scale.height - 80);
+    this.spellButton.add([bg, this.spellButtonText]);
+    this.spellButton.setDepth(100);
+    this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
+      this.spellButton.x = gameSize.width - 150;
+      this.spellButton.y = gameSize.height - 80;
+      this.spellButtonText.x = -65;
+      this.spellButtonText.y = -16;
+    });
+  }
+
+  private updateSpellButton(): void {
+    if (!this.spellButtonText) return;
+    const ready = this.player.canCastSpell();
+    const label = ready ? 'Magic Blast' : `Magic Blast (${Math.ceil(this.player.cooldownRemaining / 100) / 10}s)`;
+    this.spellButtonText.setText(label);
+    this.spellButtonText.setColor(ready ? '#f8fafc' : '#fbbf24');
   }
 
   private performEnemyAttacks(): void {
@@ -153,12 +205,13 @@ export default class PlazaScene extends Phaser.Scene {
       return;
     }
 
-    if (this.player.mana < this.player.spellCost) {
-      this.dialogueText.setText('Not enough mana for Magic Blast.');
+    if (!this.player.canCastSpell()) {
+      this.dialogueText.setText(this.player.mana < this.player.spellCost ? 'Not enough mana for Magic Blast.' : 'Magic Blast is still cooling down.');
       return;
     }
 
     this.player.mana = Math.max(0, this.player.mana - this.player.spellCost);
+    this.player.startSpellCooldown();
     const damage = 18 + Math.floor(Math.random() * 10);
     enemy.damage(damage);
     this.dialogueText.setText(`Magic Blast hits ${enemy.name} for ${damage} damage.`);
