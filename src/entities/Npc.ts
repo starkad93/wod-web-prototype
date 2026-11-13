@@ -11,36 +11,22 @@ export interface NpcData {
 }
 
 export default class Npc extends Phaser.GameObjects.Container {
-  private readonly label: Phaser.GameObjects.Text;
-
-  constructor(scene: Phaser.Scene, data: NpcData, onInteract?: (npcData: NpcData) => void) {
+  constructor(scene: Phaser.Scene, data: NpcData, onInteract: (npc: NpcData) => void) {
     super(scene, data.x, data.y);
-
-    const body = scene.add.rectangle(0, 0, 20, 24, 0x7c3aed, 1);
-    const head = scene.add.circle(0, -10, 8, 0xf3d7aa, 1);
-    const halo = scene.add.circle(0, -18, 12, 0x7dd3fc, 0.28);
-
-    this.label = scene.add.text(0, -30, data.name, {
-      fontFamily: 'monospace',
-      fontSize: '14px',
-      color: '#f8fafc',
-      backgroundColor: 'rgba(15, 23, 42, 0.8)',
-      padding: { x: 6, y: 2 },
-    });
-    this.label.setOrigin(0.5);
-
-    this.add([halo, body, head, this.label]);
-    this.setDepth(10);
+    const shadow = scene.add.ellipse(0, 17, 30, 9, 0x07130d, 0.35);
+    const robe = scene.add.ellipse(0, 2, 24, 31, 0x7653a6);
+    const trim = scene.add.arc(0, 2, 12, 200, 340, false, 0xf3d18a).setStrokeStyle(3, 0xf3d18a);
+    const head = scene.add.circle(0, -17, 9, 0xf1c9a5);
+    const marker = scene.add.text(0, -52, '◆', { fontSize: '17px', color: '#f6d36b' }).setOrigin(0.5);
+    const label = scene.add.text(0, -39, data.name, {
+      fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#fff8e6',
+      backgroundColor: '#18251ddd', padding: { x: 5, y: 3 },
+    }).setOrigin(0.5);
+    this.add([shadow, robe, trim, head, marker, label]);
     scene.add.existing(this);
-
-    this.setSize(32, 32);
-    this.setInteractive();
-
-    this.on('pointerdown', () => {
-      if (onInteract) {
-        onInteract(data);
-      }
-      scene.events.emit('npc-interact', data);
-    });
+    this.setDepth(data.y);
+    this.setSize(38, 42);
+    this.setInteractive(new Phaser.Geom.Rectangle(-19, -25, 38, 50), Phaser.Geom.Rectangle.Contains);
+    this.on('pointerdown', () => onInteract(data));
   }
 }

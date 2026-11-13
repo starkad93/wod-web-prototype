@@ -1,20 +1,6 @@
 [
-  {
-    "id": "guard-duty",
-    "title": "Guard Duty",
-    "description": "Speak with the Guard Captain in the central plaza.",
-    "targetNpcId": "guard_captain"
-  },
-  {
-    "id": "guild-report",
-    "title": "Guild Report",
-    "description": "Report to the Guild Admin beside the fountain.",
-    "targetNpcId": "guild_admin"
-  },
-  {
-    "id": "slime-clearing",
-    "title": "The First Test",
-    "description": "Defeat 2 enemies in the plaza.",
-    "targetNpcId": ""
-  }
+  { "id": "guard-duty", "title": "Guard Duty", "description": "Speak with the Guard Captain.", "type": "talk", "targetId": "guard_captain" },
+  { "id": "guild-report", "title": "Guild Report", "description": "Report to the Guild Admin.", "type": "talk", "targetId": "guild_admin" },
+  { "id": "plaza-threat", "title": "A Strange Disturbance", "description": "Defeat the two creatures near the fountain.", "type": "kill", "targetId": "", "targetCount": 2 },
+  { "id": "warden", "title": "The Shadow Warden", "description": "Defeat the Shadow Warden.", "type": "kill", "targetId": "shadow_warden", "targetCount": 1 }
 ]

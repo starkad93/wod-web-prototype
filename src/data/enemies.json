@@ -1,35 +1,5 @@
 [
-  {
-    "id": "slime_1",
-    "name": "Void Slime",
-    "x": 980,
-    "y": 620,
-    "hp": 40,
-    "maxHp": 40,
-    "color": 16711680,
-    "attackDamage": 9,
-    "xpReward": 35
-  },
-  {
-    "id": "slime_2",
-    "name": "Wild Wisp",
-    "x": 1120,
-    "y": 760,
-    "hp": 55,
-    "maxHp": 55,
-    "color": 16759625,
-    "attackDamage": 11,
-    "xpReward": 50
-  },
-  {
-    "id": "warden_1",
-    "name": "Shadow Warden",
-    "x": 1280,
-    "y": 660,
-    "hp": 80,
-    "maxHp": 80,
-    "color": 11184810,
-    "attackDamage": 15,
-    "xpReward": 70
-  }
+  { "id": "void_slime", "name": "Void Slime", "x": 980, "y": 620, "hp": 45, "maxHp": 45, "color": 10913663, "attackDamage": 6, "xpReward": 35, "boss": false },
+  { "id": "wild_wisp", "name": "Wild Wisp", "x": 1120, "y": 760, "hp": 55, "maxHp": 55, "color": 16759625, "attackDamage": 8, "xpReward": 45, "boss": false },
+  { "id": "shadow_warden", "name": "Shadow Warden", "x": 1330, "y": 650, "hp": 180, "maxHp": 180, "color": 7956034, "attackDamage": 14, "xpReward": 120, "boss": true }
 ]

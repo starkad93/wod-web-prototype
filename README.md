@@ -1,24 +1,23 @@
-# WOD Web Prototype
+# Wings of Destiny — independent browser prototype
 
-A small, original browser RPG prototype inspired by classic fantasy MMORPGs. All visuals are placeholder shapes created in code; no original game assets or code are included.
+An original fantasy browser-RPG prototype built with Phaser 3, TypeScript, Vite, and EasyStar.js. It uses only programmatically drawn placeholder art; it contains no copied game code or assets.
 
 ## Run locally
 
-```bash
+```sh
 npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite. To create a production build, run `npm run build`.
+Open the local URL printed by Vite. Verify a production bundle with `npm run build`.
 
-## Current prototype
+## Playable slice
 
-- Safe plaza scene with click-to-move pathfinding
-- Original placeholder winged mage and NPCs loaded from JSON
-- HUD with level, HP, and MP bars
-- Two sequential plaza objectives: speak with the Guard Captain, then the Guild Admin
-- NPC dialogue and simple quest rewards
+- Explore an original safe plaza with click-to-move pathfinding.
+- Talk to the Guard Captain, then the Guild Admin.
+- Defeat two creatures and challenge the Shadow Warden.
+- Use **Magic Blast** (click target or Space) and **Arcane Burst** (button or `2`). Both spend mana; mana regenerates over time. Stay close to enemies to avoid their attacks.
+- Gain XP and levels. Level-ups increase maximum HP/MP and restore them.
+- Story progress, defeated enemies, XP, and level are saved in browser local storage.
 
-Controls: click an open spot to walk; click an NPC to interact.
-
-The project intentionally does not include combat, monetization, or copied assets.
+The combat and progression values are prototype tuning, not claims about the original game's exact formulas. This is a single-player slice, not a complete MMO: there is no server, PvP, guild networking, full equipment economy, or original game art.
