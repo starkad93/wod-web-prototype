@@ -6,7 +6,8 @@
     "y": 620,
     "hp": 40,
     "maxHp": 40,
-    "color": 16711680
+    "color": 16711680,
+    "attackDamage": 9
   },
   {
     "id": "slime_2",
@@ -15,6 +16,7 @@
     "y": 760,
     "hp": 55,
     "maxHp": 55,
-    "color": 16759625
+    "color": 16759625,
+    "attackDamage": 11
   }
 ]

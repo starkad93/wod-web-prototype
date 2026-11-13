@@ -33,6 +33,7 @@ export default class PlazaScene extends Phaser.Scene {
   private quests: Quest[] = [];
   private currentQuestIndex = 0;
   private currentQuestDefeated = 0;
+  private enemyAttackTimer = 0;
 
   constructor() {
     super('PlazaScene');
@@ -77,6 +78,7 @@ export default class PlazaScene extends Phaser.Scene {
       hp: Number(enemy.hp),
       maxHp: Number(enemy.maxHp),
       color: Number(enemy.color ?? 0xf87171),
+      attackDamage: Number(enemy.attackDamage ?? 8),
     }));
 
     this.createHud();
@@ -112,6 +114,31 @@ export default class PlazaScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     this.player?.update(time, delta);
+    this.enemyAttackTimer += delta;
+
+    if (this.enemyAttackTimer > 1200) {
+      this.enemyAttackTimer = 0;
+      this.performEnemyAttacks();
+    }
+  }
+
+  private performEnemyAttacks(): void {
+    const aliveEnemies = this.enemies.filter((enemy) => enemy.alive);
+    for (const enemy of aliveEnemies) {
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
+      if (distance < 90) {
+        const damage = enemy.attackDamage;
+        this.player.hp = Math.max(0, this.player.hp - damage);
+        this.dialogueText.setText(`${enemy.name} hits you for ${damage} damage.`);
+      }
+    }
+
+    if (this.player.hp <= 0) {
+      this.player.hp = this.player.maxHp;
+      this.dialogueText.setText('You fall, but the Plaza Keeper restores you to full health.');
+    }
+
+    this.updateHud();
   }
 
   private castBasicSpell(enemy: Enemy): void {

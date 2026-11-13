@@ -8,6 +8,7 @@ export interface EnemyData {
   hp: number;
   maxHp: number;
   color?: number;
+  attackDamage?: number;
 }
 
 export default class Enemy extends Phaser.GameObjects.Container {
@@ -15,6 +16,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
   public readonly maxHp: number;
   public readonly name: string;
   public alive = true;
+  public readonly attackDamage: number;
 
   private readonly body: Phaser.GameObjects.Circle;
   private readonly label: Phaser.GameObjects.Text;
@@ -27,6 +29,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
     this.name = data.name;
     this.maxHp = data.maxHp;
     this.hp = data.hp;
+    this.attackDamage = data.attackDamage ?? 8;
 
     this.body = scene.add.circle(0, 0, 18, data.color ?? 0xf87171, 1);
     this.label = scene.add.text(0, -28, data.name, {
@@ -54,10 +57,7 @@ export default class Enemy extends Phaser.GameObjects.Container {
   }
 
   public damage(amount: number): number {
-    if (!this.alive) {
-      return 0;
-    }
-
+    if (!this.alive) return 0;
     this.hp = Math.max(0, this.hp - amount);
     this.healthBar.width = 34 * (this.hp / this.maxHp);
 
@@ -71,9 +71,5 @@ export default class Enemy extends Phaser.GameObjects.Container {
     }
 
     return this.hp;
-  }
-
-  public refreshHealthBar(): void {
-    this.healthBar.width = 34 * (this.hp / this.maxHp);
   }
 }
