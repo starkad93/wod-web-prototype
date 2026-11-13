@@ -1,12 +1,21 @@
 import Phaser from 'phaser';
 import EasyStar from 'easystarjs';
 import Player from '../entities/Player';
-import Npc from '../entities/Npc';
+import Npc, { type NpcData } from '../entities/Npc';
 import npcData from '../data/npcs.json';
+import questData from '../data/quests.json';
 
 interface GridPoint {
   x: number;
   y: number;
+}
+
+interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  targetNpcId: string;
+  completed: boolean;
 }
 
 export default class PlazaScene extends Phaser.Scene {
@@ -18,6 +27,8 @@ export default class PlazaScene extends Phaser.Scene {
   private player!: Player;
   private npcs: Npc[] = [];
   private dialogueText!: Phaser.GameObjects.Text;
+  private objectiveText!: Phaser.GameObjects.Text;
+  private currentQuest!: Quest;
 
   constructor() {
     super('PlazaScene');
@@ -33,6 +44,16 @@ export default class PlazaScene extends Phaser.Scene {
     this.player = new Player(this, 260, 420);
     this.player.setDepth(20);
 
+    const questList = (questData as Array<Record<string, unknown>>).map((quest) => ({
+      id: String(quest.id),
+      title: String(quest.title),
+      description: String(quest.description),
+      targetNpcId: String(quest.targetNpcId),
+      completed: false,
+    }));
+
+    this.currentQuest = questList[0];
+
     this.npcs = (npcData as Array<Record<string, unknown>>).map((npc) => {
       return new Npc(this, {
         id: String(npc.id),
@@ -42,7 +63,7 @@ export default class PlazaScene extends Phaser.Scene {
         role: npc.role ? String(npc.role) : undefined,
         quest: npc.quest ? String(npc.quest) : undefined,
         event: npc.event ? String(npc.event) : undefined,
-      });
+      }, (npcDetails) => this.handleNpcInteraction(npcDetails));
     });
 
     this.dialogueText = this.add.text(24, 20, 'Click on the plaza to walk.', {
@@ -54,6 +75,17 @@ export default class PlazaScene extends Phaser.Scene {
     });
     this.dialogueText.setScrollFactor(0);
     this.dialogueText.setDepth(100);
+
+    this.objectiveText = this.add.text(24, 64, `Quest: ${this.currentQuest.title}\nObjective: ${this.currentQuest.description}`, {
+      fontFamily: 'monospace',
+      fontSize: '15px',
+      color: '#f8fafc',
+      backgroundColor: 'rgba(15, 23, 42, 0.8)',
+      padding: { x: 10, y: 8 },
+      lineSpacing: 6,
+    });
+    this.objectiveText.setScrollFactor(0);
+    this.objectiveText.setDepth(100);
 
     this.events.on('dialogue', (message: string) => {
       this.dialogueText.setText(message);
@@ -82,6 +114,29 @@ export default class PlazaScene extends Phaser.Scene {
         this.player.setPath(worldPath);
       }
     });
+  }
+
+  private handleNpcInteraction(data: NpcData): void {
+    const questTarget = this.currentQuest.targetNpcId;
+
+    if (data.id === questTarget && !this.currentQuest.completed) {
+      this.currentQuest.completed = true;
+      this.objectiveText.setText('Quest: Guard Duty\nObjective: Complete!');
+      this.dialogueText.setText('Guard Captain: The plaza is safe, and the city can breathe again. Quest complete!');
+      return;
+    }
+
+    if (data.quest) {
+      this.dialogueText.setText(`${data.name}: ${data.quest}`);
+      return;
+    }
+
+    if (data.event) {
+      this.dialogueText.setText(`${data.name}: ${data.event}`);
+      return;
+    }
+
+    this.dialogueText.setText(`${data.name}: Welcome to the plaza.`);
   }
 
   private createGround(): void {
