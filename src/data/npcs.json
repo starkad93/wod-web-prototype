@@ -1,0 +1,10 @@
+[
+  { "id": "guard_captain", "name": "Guard Captain", "x": 520, "y": 350, "role": "daily_quest", "quest": "The Deadliest Hunt" },
+  { "id": "holy_emissary", "name": "Holy Emissary", "x": 710, "y": 560, "role": "event_access", "event": "The Hot Springs" },
+  { "id": "guild_admin", "name": "Guild Admin", "x": 905, "y": 360, "role": "guild" },
+  { "id": "herman_guard", "name": "Herman the Guard", "x": 1050, "y": 520, "role": "daily_quest", "quest": "The Game" },
+  { "id": "vincent", "name": "Vincent", "x": 840, "y": 220, "role": "daily_quest", "quest": "Royal Duty" },
+  { "id": "pet_merchant", "name": "Pet Merchant", "x": 1170, "y": 420, "role": "shop" },
+  { "id": "potion_merchant", "name": "Potion Merchant", "x": 300, "y": 220, "role": "shop" },
+  { "id": "blacksmith", "name": "Blacksmith", "x": 1180, "y": 700, "role": "crafting" }
+]
