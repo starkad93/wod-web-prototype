@@ -27,7 +27,9 @@ export default class PlazaScene extends Phaser.Scene {
   private player!: Player;
   private npcs: Npc[] = [];
   private dialogueText!: Phaser.GameObjects.Text;
-  private objectiveText!: Phaser.GameObjects.Text;
+  private hudText!: Phaser.GameObjects.Text;
+  private quests: Quest[] = [];
+  private currentQuestIndex = 0;
   private currentQuest!: Quest;
 
   constructor() {
@@ -44,7 +46,7 @@ export default class PlazaScene extends Phaser.Scene {
     this.player = new Player(this, 260, 420);
     this.player.setDepth(20);
 
-    const questList = (questData as Array<Record<string, unknown>>).map((quest) => ({
+    this.quests = (questData as Array<Record<string, unknown>>).map((quest) => ({
       id: String(quest.id),
       title: String(quest.title),
       description: String(quest.description),
@@ -52,7 +54,8 @@ export default class PlazaScene extends Phaser.Scene {
       completed: false,
     }));
 
-    this.currentQuest = questList[0];
+    this.currentQuestIndex = 0;
+    this.currentQuest = this.quests[this.currentQuestIndex];
 
     this.npcs = (npcData as Array<Record<string, unknown>>).map((npc) => {
       return new Npc(this, {
@@ -76,7 +79,7 @@ export default class PlazaScene extends Phaser.Scene {
     this.dialogueText.setScrollFactor(0);
     this.dialogueText.setDepth(100);
 
-    this.objectiveText = this.add.text(24, 64, `Quest: ${this.currentQuest.title}\nObjective: ${this.currentQuest.description}`, {
+    this.hudText = this.add.text(24, 72, '', {
       fontFamily: 'monospace',
       fontSize: '15px',
       color: '#f8fafc',
@@ -84,8 +87,10 @@ export default class PlazaScene extends Phaser.Scene {
       padding: { x: 10, y: 8 },
       lineSpacing: 6,
     });
-    this.objectiveText.setScrollFactor(0);
-    this.objectiveText.setDepth(100);
+    this.hudText.setScrollFactor(0);
+    this.hudText.setDepth(100);
+
+    this.updateHud();
 
     this.events.on('dialogue', (message: string) => {
       this.dialogueText.setText(message);
@@ -116,13 +121,33 @@ export default class PlazaScene extends Phaser.Scene {
     });
   }
 
-  private handleNpcInteraction(data: NpcData): void {
-    const questTarget = this.currentQuest.targetNpcId;
+  private updateHud(): void {
+    const hp = Math.max(0, Math.round(this.player.hp));
+    const mana = Math.max(0, Math.round(this.player.mana));
 
-    if (data.id === questTarget && !this.currentQuest.completed) {
+    this.hudText.setText(
+      `Level ${this.player.level} | HP ${hp}/${this.player.maxHp} | MP ${mana}/${this.player.maxMana}\n` +
+      `Quest: ${this.currentQuest.title}\n` +
+      `Objective: ${this.currentQuest.description}`
+    );
+  }
+
+  private handleNpcInteraction(data: NpcData): void {
+    if (data.id === this.currentQuest.targetNpcId && !this.currentQuest.completed) {
       this.currentQuest.completed = true;
-      this.objectiveText.setText('Quest: Guard Duty\nObjective: Complete!');
-      this.dialogueText.setText('Guard Captain: The plaza is safe, and the city can breathe again. Quest complete!');
+      this.player.mana = Math.min(this.player.maxMana, this.player.mana + 10);
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + 8);
+
+      const nextQuestIndex = this.currentQuestIndex + 1;
+      if (nextQuestIndex < this.quests.length) {
+        this.currentQuestIndex = nextQuestIndex;
+        this.currentQuest = this.quests[this.currentQuestIndex];
+        this.dialogueText.setText(`${data.name}: Good work. Your next objective is now available.`);
+      } else {
+        this.dialogueText.setText(`${data.name}: The plaza is secure. All current objectives are complete.`);
+      }
+
+      this.updateHud();
       return;
     }
 
